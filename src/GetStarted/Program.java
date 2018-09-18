@@ -2,31 +2,31 @@ package GetStarted;
 
 import java.io.IOException;
 
-import com.microsoft.azure.documentdb.ConnectionPolicy;
-import com.microsoft.azure.documentdb.ConsistencyLevel;
-import com.microsoft.azure.documentdb.DataType;
-import com.microsoft.azure.documentdb.Database;
-import com.microsoft.azure.documentdb.Document;
-import com.microsoft.azure.documentdb.DocumentClient;
-import com.microsoft.azure.documentdb.DocumentClientException;
-import com.microsoft.azure.documentdb.DocumentCollection;
-import com.microsoft.azure.documentdb.FeedOptions;
-import com.microsoft.azure.documentdb.FeedResponse;
-import com.microsoft.azure.documentdb.Index;
-import com.microsoft.azure.documentdb.IndexingPolicy;
-import com.microsoft.azure.documentdb.RangeIndex;
-import com.microsoft.azure.documentdb.RequestOptions;
+import com.microsoft.azure.cosmos.ConnectionPolicy;
+import com.microsoft.azure.cosmos.ConsistencyLevel;
+import com.microsoft.azure.cosmos.DataType;
+import com.microsoft.azure.cosmos.Database;
+import com.microsoft.azure.cosmos.Item;
+import com.microsoft.azure.cosmos.CosmosClient;
+import com.microsoft.azure.cosmos.CosmosClientException;
+import com.microsoft.azure.cosmos.Container;
+import com.microsoft.azure.cosmos.FeedOptions;
+import com.microsoft.azure.cosmos.FeedResponse;
+import com.microsoft.azure.cosmos.Index;
+import com.microsoft.azure.cosmos.IndexingPolicy;
+import com.microsoft.azure.cosmos.RangeIndex;
+import com.microsoft.azure.cosmos.RequestOptions;
 
 public class Program {
 
-    private DocumentClient client;
+    private CosmosClient client;
 
     /**
-     * Run a Hello DocumentDB console application.
+     * Run a Hello Cosmos DB console application.
      * 
      * @param args
      *            command line arguments
-     * @throws DocumentClientException
+     * @throws CosmosClientException
      *             exception
      * @throws IOException 
      */
@@ -37,31 +37,31 @@ public class Program {
             p.getStartedDemo();
             System.out.println(String.format("Demo complete, please hold while resources are deleted"));
         } catch (Exception e) {
-            System.out.println(String.format("DocumentDB GetStarted failed with %s", e));
+            System.out.println(String.format("Cosmos DB GetStarted failed with %s", e));
         }
     }
 
-    private void getStartedDemo() throws DocumentClientException, IOException {
-        this.client = new DocumentClient("https://FILLME.documents.azure.com",
+    private void getStartedDemo() throws CosmosClientException, IOException {
+        this.client = new CosmosClient("https://FILLME.documents.azure.com",
                 "FILLME", 
                 new ConnectionPolicy(),
                 ConsistencyLevel.Session);
 
         this.createDatabaseIfNotExists("FamilyDB");
-        this.createDocumentCollectionIfNotExists("FamilyDB", "FamilyCollection");
+        this.createContainerIfNotExists("FamilyDB", "FamilyContainer");
 
-        Family andersenFamily = getAndersenFamilyDocument();
-        this.createFamilyDocumentIfNotExists("FamilyDB", "FamilyCollection", andersenFamily);
+        Family andersenFamily = getAndersenFamilyItem();
+        this.createFamilyItemIfNotExists("FamilyDB", "FamilyContainer", andersenFamily);
 
-        Family wakefieldFamily = getWakefieldFamilyDocument();
-        this.createFamilyDocumentIfNotExists("FamilyDB", "FamilyCollection", wakefieldFamily);
+        Family wakefieldFamily = getWakefieldFamilyItem();
+        this.createFamilyItemIfNotExists("FamilyDB", "FamilyContainer", wakefieldFamily);
 
-        this.executeSimpleQuery("FamilyDB", "FamilyCollection");
+        this.executeSimpleQuery("FamilyDB", "FamilyContainer");
 
         this.client.deleteDatabase("/dbs/FamilyDB", null);
     }
 
-    private Family getAndersenFamilyDocument() {
+    private Family getAndersenFamilyItem() {
         Family andersenFamily = new Family();
         andersenFamily.setId("Andersen.1");
         andersenFamily.setLastName("Andersen");
@@ -96,7 +96,7 @@ public class Program {
         return andersenFamily;
     }
 
-    private Family getWakefieldFamilyDocument() {
+    private Family getWakefieldFamilyItem() {
         Family wakefieldFamily = new Family();
         wakefieldFamily.setId("Wakefield.7");
         wakefieldFamily.setLastName("Wakefield");
@@ -143,14 +143,14 @@ public class Program {
         return wakefieldFamily;
     }
 
-    private void createDatabaseIfNotExists(String databaseName) throws DocumentClientException, IOException {
+    private void createDatabaseIfNotExists(String databaseName) throws CosmosClientException, IOException {
         String databaseLink = String.format("/dbs/%s", databaseName);
 
         // Check to verify a database with the id=FamilyDB does not exist
         try {
             this.client.readDatabase(databaseLink, null);
             this.writeToConsoleAndPromptToContinue(String.format("Found %s", databaseName));
-        } catch (DocumentClientException de) {
+        } catch (CosmosClientException de) {
             // If the database does not exist, create a new database
             if (de.getStatusCode() == 404) {
                 Database database = new Database();
@@ -164,39 +164,38 @@ public class Program {
         }
     }
 
-    private void createDocumentCollectionIfNotExists(String databaseName, String collectionName) throws IOException,
-            DocumentClientException {
+    private void createContainerIfNotExists(String databaseName, String containerName) throws IOException,
+    CosmosClientException {
         String databaseLink = String.format("/dbs/%s", databaseName);
-        String collectionLink = String.format("/dbs/%s/colls/%s", databaseName, collectionName);
+        String containerLink = String.format("/dbs/%s/colls/%s", databaseName, containerName);
 
         try {
-            this.client.readCollection(collectionLink, null);
-            writeToConsoleAndPromptToContinue(String.format("Found %s", collectionName));
-        } catch (DocumentClientException de) {
-            // If the document collection does not exist, create a new
-            // collection
+            this.client.readContainer(containerLink, null);
+            writeToConsoleAndPromptToContinue(String.format("Found %s", containerName));
+        } catch (CosmosClientException de) {
+            // If the container does not exist, create a new container
             if (de.getStatusCode() == 404) {
-                DocumentCollection collectionInfo = new DocumentCollection();
-                collectionInfo.setId(collectionName);
+                Container containerInfo = new Container();
+                containerInfo.setId(containerName);
 
                 // Optionally, you can configure the indexing policy of a
-                // collection. Here we configure collections for maximum query
+                // container. Here we configure container for maximum query
                 // flexibility including string range queries.
                 RangeIndex index = new RangeIndex(DataType.String);
                 index.setPrecision(-1);
 
-                collectionInfo.setIndexingPolicy(new IndexingPolicy(new Index[] { index }));
+                containerInfo.setIndexingPolicy(new IndexingPolicy(new Index[] { index }));
 
-                // DocumentDB collections can be reserved with throughput
+                // Cosmos DB container can be reserved with throughput
                 // specified in request units/second. 1 RU is a normalized
                 // request equivalent to the read of a 1KB document. Here we
-                // create a collection with 400 RU/s.
+                // create a container with 400 RU/s.
                 RequestOptions requestOptions = new RequestOptions();
                 requestOptions.setOfferThroughput(400);
 
-                this.client.createCollection(databaseLink, collectionInfo, requestOptions);
+                this.client.createContainer(databaseLink, containerInfo, requestOptions);
 
-                this.writeToConsoleAndPromptToContinue(String.format("Created %s", collectionName));
+                this.writeToConsoleAndPromptToContinue(String.format("Created %s", containerName));
             } else {
                 throw de;
             }
@@ -204,15 +203,15 @@ public class Program {
 
     }
 
-    private void createFamilyDocumentIfNotExists(String databaseName, String collectionName, Family family)
-            throws DocumentClientException, IOException {
+    private void createFamilyItemIfNotExists(String databaseName, String containerName, Family family)
+            throws CosmosClientException, IOException {
         try {
-            String documentLink = String.format("/dbs/%s/colls/%s/docs/%s", databaseName, collectionName, family.getId());
-            this.client.readDocument(documentLink, new RequestOptions());
-        } catch (DocumentClientException de) {
+            String itemLink = String.format("/dbs/%s/colls/%s/docs/%s", databaseName, containerName, family.getId());
+            this.client.readItem(itemLink, new RequestOptions());
+        } catch (CosmosClientException de) {
             if (de.getStatusCode() == 404) {
-                String collectionLink = String.format("/dbs/%s/colls/%s", databaseName, collectionName);
-                this.client.createDocument(collectionLink, family, new RequestOptions(), true);
+                String containerLink = String.format("/dbs/%s/colls/%s", databaseName, containerName);
+                this.client.createItem(containerLink, family, new RequestOptions(), true);
                 this.writeToConsoleAndPromptToContinue(String.format("Created Family %s", family.getId()));
             } else {
                 throw de;
@@ -220,42 +219,42 @@ public class Program {
         }
     }
 
-    private void executeSimpleQuery(String databaseName, String collectionName) {
+    private void executeSimpleQuery(String databaseName, String containerName) {
         // Set some common query options
         FeedOptions queryOptions = new FeedOptions();
         queryOptions.setPageSize(-1);
         queryOptions.setEnableCrossPartitionQuery(true);
 
-        String collectionLink = String.format("/dbs/%s/colls/%s", databaseName, collectionName);
-        FeedResponse<Document> queryResults = this.client.queryDocuments(collectionLink,
+        String containerLink = String.format("/dbs/%s/colls/%s", databaseName, containerName);
+        FeedResponse<Item> queryResults = this.client.queryItems(containerLink,
                 "SELECT * FROM Family WHERE Family.lastName = 'Andersen'", queryOptions);
 
         System.out.println("Running SQL query...");
-        for (Document family : queryResults.getQueryIterable()) {
+        for (Item family : queryResults.getQueryIterable()) {
             System.out.println(String.format("\tRead %s", family));
         }
     }
 
     @SuppressWarnings("unused")
-    private void replaceFamilyDocument(String databaseName, String collectionName, String familyName, Family updatedFamily)
-            throws IOException, DocumentClientException {
+    private void replaceFamilyItem(String databaseName, String containerName, String familyName, Family updatedFamily)
+            throws IOException, CosmosClientException {
         try {
-            this.client.replaceDocument(
-                    String.format("/dbs/%s/colls/%s/docs/%s", databaseName, collectionName, updatedFamily.getId()), updatedFamily,
+            this.client.replaceItem(
+                    String.format("/dbs/%s/colls/%s/docs/%s", databaseName, containerName, updatedFamily.getId()), updatedFamily,
                     null);
             writeToConsoleAndPromptToContinue(String.format("Replaced Family %s", updatedFamily.getId()));
-        } catch (DocumentClientException de) {
+        } catch (CosmosClientException de) {
             throw de;
         }
     }
 
     @SuppressWarnings("unused")
-    private void deleteFamilyDocument(String databaseName, String collectionName, String documentName) throws IOException,
-            DocumentClientException {
+    private void deleteFamilyItem(String databaseName, String containerName, String itemName) throws IOException,
+            CosmosClientException {
         try {
-            this.client.deleteDocument(String.format("/dbs/%s/colls/%s/docs/%s", databaseName, collectionName, documentName), null);
-            writeToConsoleAndPromptToContinue(String.format("Deleted Family %s", documentName));
-        } catch (DocumentClientException de) {
+            this.client.deleteItem(String.format("/dbs/%s/colls/%s/docs/%s", databaseName, containerName, itemName), null);
+            writeToConsoleAndPromptToContinue(String.format("Deleted Family %s", itemName));
+        } catch (CosmosClientException de) {
             throw de;
         }
     }
